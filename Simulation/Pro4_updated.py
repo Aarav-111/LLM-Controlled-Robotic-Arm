@@ -2,16 +2,11 @@ import sys
 import math
 import base64
 import re
-import time
-from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, 
-                               QVBoxLayout, QLineEdit, QTextEdit, QPushButton, QLabel)
-from PySide6.QtCore import QTimer, Qt, QThread, Signal, QBuffer, QIODevice, QPoint, QRectF
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLineEdit, QTextEdit, QPushButton, QLabel
+from PySide6.QtCore import QTimer, Qt, QThread, Signal, QBuffer, QIODevice, QPoint
 from PySide6.QtGui import QPainter, QColor, QFont, QPen
 from openai import OpenAI
 
-# ---------------------------------------------------------
-# WORKER THREAD FOR API COMMUNICATION
-# ---------------------------------------------------------
 class ChatWorker(QThread):
     response_received = Signal(str)
 
@@ -28,7 +23,6 @@ class ChatWorker(QThread):
                 messages.append(msg)
             
             if self.image_base64:
-                # Prepare message with image for GPT-4o
                 last_msg = messages[-1]
                 if last_msg["role"] == "user":
                     text_content = last_msg["content"]
@@ -54,9 +48,6 @@ class ChatWorker(QThread):
         except Exception as e:
             self.response_received.emit(f"OpenAI Error: {str(e)}")
 
-# ---------------------------------------------------------
-# ROBOT SIMULATION WIDGET (CARTESIAN ARM)
-# ---------------------------------------------------------
 class RobotSim(QWidget):
     def __init__(self):
         super().__init__()
@@ -67,10 +58,8 @@ class RobotSim(QWidget):
         self.COL_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
         self.ROW_LABELS = ['1', '2', '3', '4', '5']
         
-        # UI State
         self.arm_visible = True
         
-        # Initial positions
         self.bot_pos = [self.MARGIN_X + 40, self.MARGIN_Y + 40]
         self.bot_target = list(self.bot_pos)
         self.brick_pos = [self.MARGIN_X + 120, self.MARGIN_Y + 40]
@@ -123,7 +112,7 @@ class RobotSim(QWidget):
         return math.hypot(self.bot_target[0] - self.bot_pos[0], self.bot_target[1] - self.bot_pos[1]) < 2
 
     def mousePressEvent(self, event):
-        p = event.pos()
+        p = event.position().toPoint()
         if math.hypot(p.x() - self.bot_pos[0], p.y() - self.bot_pos[1]) < 40:
             self.dragging_obj = "bot"
             self.drag_offset = QPoint(p.x() - self.bot_pos[0], p.y() - self.bot_pos[1])
@@ -140,8 +129,9 @@ class RobotSim(QWidget):
 
     def mouseMoveEvent(self, event):
         if self.dragging_obj:
-            new_x = event.pos().x() - self.drag_offset.x()
-            new_y = event.pos().y() - self.drag_offset.y()
+            p = event.position().toPoint()
+            new_x = p.x() - self.drag_offset.x()
+            new_y = p.y() - self.drag_offset.y()
             if self.dragging_obj == "bot":
                 self.bot_pos = [new_x, new_y]
                 self.bot_target = list(self.bot_pos)
@@ -158,25 +148,25 @@ class RobotSim(QWidget):
         qp = QPainter(self)
         qp.setRenderHint(QPainter.RenderHint.Antialiasing)
         
-        # 1. Background
         qp.fillRect(self.rect(), QColor(10, 10, 20))
         
-        # 2. Draw Object Shelf Area
         qp.setPen(QColor(60, 60, 80))
         qp.drawRect(self.MARGIN_X, self.MARGIN_Y - 110, 400, 90)
         qp.setPen(QColor(150, 150, 150))
         qp.setFont(QFont("Arial", 10))
         qp.drawText(self.MARGIN_X + 10, self.MARGIN_Y - 90, "STAGING AREA / SHELF")
 
-        # 3. Draw Grid System
-        qp.setPen(QColor(40, 45, 60))
         for c in range(8):
             for r in range(5):
                 x = self.MARGIN_X + c * self.CELL_SIZE
                 y = self.MARGIN_Y + r * self.CELL_SIZE
+                qp.setPen(QColor(40, 45, 60))
                 qp.drawRect(x, y, self.CELL_SIZE, self.CELL_SIZE)
+                
+                qp.setPen(QColor(60, 60, 80))
+                cell_label = f"{self.COL_LABELS[c]}{self.ROW_LABELS[4-r]}"
+                qp.drawText(x + 5, y + 20, cell_label)
 
-        # 4. Draw Labels
         qp.setPen(QColor(0, 180, 255))
         qp.setFont(QFont("Courier New", 12, QFont.Bold))
         for i, lbl in enumerate(self.COL_LABELS):
@@ -184,7 +174,6 @@ class RobotSim(QWidget):
         for i, lbl in enumerate(reversed(self.ROW_LABELS)):
             qp.drawText(self.MARGIN_X - 25, self.MARGIN_Y + i * self.CELL_SIZE + 45, lbl)
 
-        # 5. Draw Objects
         def draw_obj(obj_type, x, y, w, h, color):
             qp.setBrush(color)
             qp.setPen(Qt.NoPen)
@@ -199,26 +188,22 @@ class RobotSim(QWidget):
         
         draw_obj("rect", self.brick_pos[0], self.brick_pos[1], 40, 40, QColor(240, 240, 240))
 
-        # 6. DRAW CARTESIAN GANTRY ARM (Hideable for LLM screenshot)
         if self.arm_visible:
             grid_top = self.MARGIN_Y
             grid_bottom = self.MARGIN_Y + (5 * self.CELL_SIZE)
             grid_left = self.MARGIN_X
             grid_right = self.MARGIN_X + (8 * self.CELL_SIZE)
 
-            # Fixed Horizontal Rails
             qp.setPen(QPen(QColor(50, 50, 60), 10))
             qp.drawLine(grid_left - 20, grid_top - 10, grid_right + 20, grid_top - 10)
             qp.drawLine(grid_left - 20, grid_bottom + 10, grid_right + 20, grid_bottom + 10)
 
-            # Vertical Sliding Rail (X-axis)
             rail_x = self.bot_pos[0]
             qp.setPen(QPen(QColor(40, 100, 140), 14))
             qp.drawLine(int(rail_x), int(grid_top - 10), int(rail_x), int(grid_bottom + 10))
             qp.setPen(QPen(QColor(100, 200, 255), 2))
             qp.drawLine(int(rail_x), int(grid_top - 10), int(rail_x), int(grid_bottom + 10))
 
-            # Motor Head (Y-axis)
             head_y = self.bot_pos[1]
             qp.setBrush(QColor(30, 30, 30))
             qp.setPen(QPen(QColor(255, 140, 0), 2))
@@ -227,28 +212,22 @@ class RobotSim(QWidget):
             qp.setPen(Qt.NoPen)
             qp.drawEllipse(int(rail_x - 8), int(head_y - 8), 16, 16)
 
-            # Gripper
             qp.setPen(QPen(QColor(200, 200, 200), 4))
             claw_offset = 10 if self.holding else 25 
-            # Left Claw
             qp.drawLine(int(rail_x - 15), int(head_y + 25), int(rail_x - 15), int(head_y + 40))
             qp.drawLine(int(rail_x - 15), int(head_y + 40), int(rail_x - claw_offset), int(head_y + 50))
-            # Right Claw
             qp.drawLine(int(rail_x + 15), int(head_y + 25), int(rail_x + 15), int(head_y + 40))
             qp.drawLine(int(rail_x + 15), int(head_y + 40), int(rail_x + claw_offset), int(head_y + 50))
+        
+        qp.end()
 
-
-# ---------------------------------------------------------
-# MAIN WINDOW
-# ---------------------------------------------------------
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Prolabs V12.2 - Precision Cartesian Gantry")
         self.showMaximized() 
         
-        # HARDCODED API KEY
-        self.api_key = "YOUR API KEY HERE"
+        self.api_key = "YOUR OPENAI API KEY HERE"
         
         system_prompt = """You are a Coordinate locator & planner for a Cartesian Gantry Robot.
 IMAGE ANALYSIS RULES:
@@ -322,16 +301,9 @@ Example: Move white brick to E3.
         layout.addWidget(right_side, 3)
 
     def capture_board(self):
-        # Temporarily hide arm so LLM sees a clean grid
         self.sim.arm_visible = False
-        self.sim.update()
-        QApplication.processEvents() # Force repaint
-        
         pixmap = self.sim.grab()
-        
-        # Show arm again for the user
         self.sim.arm_visible = True
-        self.sim.update()
         
         buffer = QBuffer()
         buffer.open(QIODevice.WriteOnly)
