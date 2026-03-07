@@ -14,17 +14,6 @@ This repository focuses on the Whole HOS System, the mobile base that enables hu
 
 ---
 
-## Repository Scope: Navigation System
-
-The Navigation System acts as the humanoid’s mover layer. It is responsible for:
-
-- Physical mobility via wheels or robotic legs
-- Spatial awareness
-- Command-based motion execution
-- Integration readiness for upper-body systems
-
-This module is the foundation upon which the full humanoid stack is built.
-
 ---
 
 ## HOS Architecture
@@ -34,78 +23,11 @@ A complete HOS humanoid consists of two primary hardware integrations:
 | Component | Role | Description |
 |----------|------|-------------|
 | Robotic Arm | Worker | Manipulation and task execution|
-| Navigation System | Mover | Mobile base providing locomotion and orientation |
-
-Current focus: finalizing the navigation layer before integrating the robotic arm to form a complete autonomous humanoid.
-
+| Mobile Arm | Mover | Mobile base providing locomotion and orientation |
 ---
 
-## Navigator Robot Objective
-
-**Objective:**
-
-The robotic arm is mounted on a linear rail or track. It must follow instructions given by a Path Planner LLM.
-The Path Planner LLM decides where the robot should go and how it should move. The robotic arm must correctly understand and execute these instructions.
-
-For example:
-	• If the Path Planner LLM tells the robot to go to the kitchen, the robot must move to the kitchen.
-	• If it tells the robot to go to the living room, the robot must move to the living room.
-	• The same behaviour applies to any other location.
-
-In short, the robotic arm should reliably move to any specified location by following the Path Planner LLM’s guidance.
-
-**Input:** initially, I'll type it in the textbox of the Arduino IDE's Serial Monitor to go to a certain location, and the LLM to guide it to the same.
-
-How will we do it?
-
-- Create a track
-- Create a carriage to slide on the track
-- Add a stepper/encoder motor with a belt & attach to carriage
-- Make Custom GPT to guide the robot to the location
-- When instruction is given, the LLM will guide it to the location using camera
-
-
----
-
-## Smart Navigation Logic
-
-The navigation system uses a top-down visual feedback loop.
-
-The LLM functions as an experienced driver by interpreting a bird’s-eye camera feed.
-
-Based on this visual context, the system issues precise movement commands.
-
----
-
-## Control Protocol
-
-The navigation layer accepts single-word commands mapped to deterministic physical actions.
-
-| Command | Action | Specification |
-|--------|--------|---------------|
-| front  | Move forward | 1 cm displacement |
-| back   | Move backward | 1 cm displacement |
-| left   | Turn left | 30° rotation |
-| right  | Turn right | 30° rotation |
-| stop   | Halt | Immediate stop |
-
----
-
-## Environment Awareness
-
-The system is tested on a standard residential layout, enabling room-level navigation and spatial reasoning across:
-
-- Living Room
-- Kitchen
-- Bedroom
-- Bathroom
-
----
-
-## Development Roadmap
 
 - [x] HOS Concept Design
-- [x] Vehicle wheels physical prototyping
 - [x] Navigation Logic and System Prompting
 - [ ] Gemini Robotics arm integration (in progress)
 - [ ] Full humanoid deployment
@@ -114,22 +36,13 @@ The system is tested on a standard residential layout, enabling room-level navig
 
 ## **Upcoming Versions**
 
-## **Version 0.5**
-****Super Basic 2D humanoid prototype**** *(Completed)*
-
-Uses a Cartesian robot 2D (z & x) with a gripper and belt-based navigation.  
-Focused on simple object movement and transport tasks.
-
-****Example Tasks****
-- Bring soda from the kitchen
-- Pack my bag for a vacation to the beach
 
 
 ---
 
 
-## **Version 1.5**
-****Full robotic arm system**** *(In progress)*
+## **Version 2.0**
+****Full Cartesian system**** *(In progress)*
 
 A powerful 3D Cartesian setup capable of doing any task on the table.
 
@@ -206,7 +119,7 @@ Project Lead: Aarav J.
 Collaborators:
 - Vivan Rajpuria
 - Samvedh Narayanam
-- Maker’s Asylum
+- Maker’s Asylum PVT LTD
 - Siyona chicker
 
 Contact:  
